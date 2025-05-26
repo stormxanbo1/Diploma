@@ -1,0 +1,70 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.5'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.diploma'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain { languageVersion = JavaLanguageVersion.of(17) }
+}
+
+configurations {
+	compileOnly { extendsFrom annotationProcessor }
+}
+
+repositories {
+	mavenCentral()
+	maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+	// Spring Boot dependencies
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	
+	// Jackson для поддержки Java 8 Date/Time
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+	
+	// JWT dependencies
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	
+	// Rate limiting
+	implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:7.6.0'
+	
+	// Other dependencies
+	implementation 'org.modelmapper:modelmapper:3.1.1'
+	implementation 'io.minio:minio:8.5.17'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.projectlombok:lombok:1.18.28'
+
+	// Database
+	runtimeOnly 'org.postgresql:postgresql'
+	runtimeOnly 'com.h2database:h2'
+
+	// Test dependencies
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+}
+
+
+//tasks.withType(JavaCompile).configureEach {
+//	options.compilerArgs += ['-Xlint:deprecation']
+//}
+
+test {
+	testLogging {
+		showStandardStreams = true    // ← разрешить stdout/stderr в логах Gradle
+	}
+}
+
+tasks.named('test') { useJUnitPlatform() }

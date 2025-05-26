@@ -1,0 +1,67 @@
+services:
+  app:
+    build: .
+    image: diploma_backend:latest
+    container_name: diploma_app
+    ports:
+      - "8080:8080"
+    environment:
+      # Можно убрать SERVER_PORT — Spring Boot берёт server.port из SPRING_SERVER_PORT
+      # лучше:
+      SPRING_SERVER_PORT:             "8080"
+
+      SPRING_DATASOURCE_URL:          "jdbc:postgresql://postgres:5432/diploma"
+      SPRING_DATASOURCE_USERNAME:     "postgres"
+      SPRING_DATASOURCE_PASSWORD:     "1234"
+      SPRING_JPA_HIBERNATE_DDL_AUTO:  "update"
+      SPRING_JPA_SHOW_SQL:            "true"
+      SPRING_JPA_FORMAT_SQL:          "true"
+
+      # Здесь обратите внимание: в application.properties вы используете placeholder
+      # minio.url=${MINIO_URL:http://localhost:9000}
+      # Поэтому внутри контейнера нужно именно имя сервиса 'minio', а не localhost:
+      MINIO_URL:                      "http://minio:9000"
+      MINIO_ACCESS_KEY:               "minioadmin"
+      MINIO_SECRET_KEY:               "minioadmin"
+      MINIO_BUCKET:                   "app-files"
+
+      # JWT_SECRET был обрезан и неправильно закрыт кавычкой
+      JWT_SECRET:                     "9de120f2f8a8481dbf2c792b1a95fc3d98ab57a1caa6e9fbe8713af4908a7b22"
+      JWT_ACCESS_EXPIRATION_MINUTES:  "15"
+      JWT_REFRESH_EXPIRATION_HOURS:   "24"
+    depends_on:
+      - postgres
+      - minio
+
+  postgres:
+    image: postgres:15
+    container_name: diploma_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB:       "diploma"
+      POSTGRES_USER:     "postgres"
+      POSTGRES_PASSWORD: "1234"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    container_name: diploma_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      # МинIO сам по себе не читает эти переменные — они нужны только приложению
+      # Можно убрать MINIO_URL / MINIO_BUCKET здесь, они не используются самим контейнером.
+      MINIO_ROOT_USER:     "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  minio_data:

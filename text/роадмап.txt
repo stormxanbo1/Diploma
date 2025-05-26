@@ -1,0 +1,217 @@
+Ниже обновлённый по последнему ТЗ и use-кейсам план разработки бэкенд-части:
+
+---
+
+## 0. Организация работы
+
+1. **Репозиторий и трекер задач**
+
+   * Создать Git-репозиторий (`main`/`develop`) и настроить доску в таск-трекере (Jira/GitHub Issues).
+   * Завести эпики: «Безопасность», «Доменные сущности», «Комментарии», «Задачи/Проекты», «Расписание/Ресурсы», «Уведомления», «Отчёты», «Документация API».
+
+2. **Среда и зависимости**
+
+   * Зарегистрировать сервисы PostgreSQL и Minio (локально или в Docker Compose).
+   * Настроить `application.yml` с datasource, параметрами JWT и Minio.
+
+---
+
+## 1. Инициализация проекта
+
+1. Создать Spring Boot + Gradle проект со следующими зависимостями:
+
+   ```
+   spring-boot-starter-web  
+   spring-boot-starter-data-jpa  
+   spring-boot-starter-security  
+   jjwt (или spring-boot-starter-oauth2-resource-server)  
+   postgresql  
+   lombok  
+   minio  
+   springdoc-openapi-ui  
+   ```
+2. Подключить Lombok и проверить генерацию сущностей.
+3. Включить `spring.jpa.hibernate.ddl-auto=update` для быстрого старта.
+
+---
+
+## 2. Слой безопасности и аутентификация
+
+1. **PasswordEncoder**
+
+   * `@Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }`
+
+2. **JWT‐утилиты**
+
+   * `JwtUtil`: генерация/валидация access (15 мин) и refresh (24 ч) токенов.
+
+3. **CustomUserDetailsService**
+
+   * Загружает `User` с ролями из БД.
+
+4. **SecurityConfig**
+
+   * Открыть `/auth/**`, защитить остальные эндпоинты по ролям (`hasRole("ADMIN")`, `hasAnyRole("STAFF","TEACHER")` и т. д.).
+   * Включить JWT-фильтр перед `UsernamePasswordAuthenticationFilter`.
+
+5. **AuthController**
+
+   * `POST /auth/register`
+   * `POST /auth/login`
+   * `POST /auth/refresh`
+
+---
+
+## 3. Доменные сущности и репозитории
+
+1. **Entity-классы**
+
+   * `User`, `Role`, `Group`, `Resource`,
+   * `Project`, `Task`, `Attachment`, `Comment`,
+   * `ScheduleEntry`, `Notification`, (опционально `ReportRequest`).
+
+2. **Repository**
+
+   * `JpaRepository` для каждой сущности.
+   * Методы поиска по фильтрам (e.g. `findByAssignees_Id`, `findByOwner_Id`).
+
+---
+
+## 4. DTO и маппинг
+
+1. Create/Update DTO для всех операций:
+
+   * `UserDto`, `GroupDto`, `ResourceDto`,
+   * `ProjectCreateDto`/`ProjectDto`,
+   * `TaskCreateDto`/`TaskDto`,
+   * `CommentDto`, `ScheduleDto`, `NotificationDto`, `ReportRequestDto`.
+
+2. Маппинг вручную или через MapStruct.
+
+---
+
+## 5. Сервисный слой
+
+1. **UserService**
+
+   * CRUD пользователей, выдача ролей, проверка уникальности email.
+
+2. **GroupService**, **ResourceService**
+
+   * Простейший CRUD с проверкой прав.
+
+3. **ProjectService**
+
+   * CRUD проектов,
+   * комментарии к проектам: `addComment(projectId, text)`.
+
+4. **TaskService**
+
+   * CRUD задач (с учётом необязательного `projectId`),
+   * комментарии к задачам,
+   * загрузка/удаление вложений через `AttachmentService`.
+
+5. **CommentService**
+
+   * Общий сервис для работы с `Comment` (если логика дублируется).
+
+6. **ScheduleService**
+
+   * CRUD расписаний.
+
+7. **AttachmentService**
+
+   * Обёртка над Minio-клиентом: `upload`, `getUrl`, `delete`.
+
+8. **NotificationService**
+
+   * `create(…)` при событиях (дедлайн, изменение расписания, админ-сообщение),
+   * `listByUser(userId)`, `markRead(notificationId)`.
+
+9. **ReportService**
+
+   * Построение отчётов:
+
+     * Tasks Report (count / avgTime / totalWeight)
+     * Activity Report (счетчики CRUD-действий)
+
+---
+
+## 6. REST-контроллеры
+
+1. **AuthController** (`/auth/**`)
+
+2. **UserController** (`/users/**`) & **GroupController**, **ResourceController**
+
+3. **ProjectController** (`/projects/**`)
+
+   * * комментарии:
+
+     - `GET /projects/{id}/comments`
+     - `POST /projects/{id}/comments`
+     - `DELETE /projects/{id}/comments/{commentId}`
+
+4. **TaskController** (`/tasks/**`)
+
+   * CRUD задач +
+
+     * `GET /tasks/{id}/comments`
+     * `POST /tasks/{id}/comments`
+     * `DELETE /tasks/{id}/comments/{commentId}`
+     * `POST /tasks/{id}/attachments`
+     * `GET/DELETE /tasks/{id}/attachments/{attId}`
+
+5. **ScheduleController** (`/schedule/**`)
+
+6. **NotificationController** (`/notifications`)
+
+   * `GET`, `POST /{id}/mark-read`
+
+7. **ReportController** (`/reports/**`)
+
+   * `GET /reports/tasks`
+   * `GET /reports/activity`
+
+8. **ExceptionHandler** (`@ControllerAdvice`)
+
+   * 400/403/404/500 с единым JSON-форматом ошибок.
+
+---
+
+## 7. Фоновые задачи
+
+* Включить `@EnableScheduling`.
+* Добавить `@Scheduled(cron = "0 0 * * * *")` для `NotificationService.sendDeadlineReminders()`.
+
+---
+
+## 8. Логирование и документация
+
+1. **SLF4J** в каждом сервисе/контроллере: логгировать ошибки и ключевые события (login, create/delete).
+2. **OpenAPI/Swagger** (`springdoc-openapi-ui`) для автогенерации спецификации.
+
+---
+
+## 9. Интеграция и проверка
+
+1. **Postman/Insomnia**: создать коллекцию с примерами запросов для всех эндпоинтов.
+2. Прогонить основные сценарии (use-кейсы):
+
+   * регистрация, login, refresh
+   * CRUD пользователей/групп/ресурсов
+   * создание — комментирование — завершение задач и проектов
+   * просмотр/редактирование расписания
+   * получение уведомлений
+   * генерация отчётов
+
+---
+
+## 10. Передача фронтенду
+
+* Сгенерировать и опубликовать OpenAPI-спецификацию.
+* Отдать Postman-коллекцию.
+* Провести демо-сессию по основным use-кэйсам.
+
+---
+
+После каждого большого блока (базовая настройка, безопасность, доменные сущности, бизнес-логика) делайте промежуточный код-ревью и проверяйте соответствие use-кейсам. Такой итеративный подход позволит быстро и качественно закрыть все пункты ТЗ. Удачи!

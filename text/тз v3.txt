@@ -1,0 +1,191 @@
+Техническое задание на бэкенд веб-приложения для управления задачами, проектами и учебными ресурсами
+
+1. Цель и область применения
+
+Разработать монолитную бэкенд-часть веб-приложения для сотрудников и студентов учебного заведения. Система должна обеспечивать:
+
+Учёт и управление дополнительными задачами и проектами сотрудников (воспитательная, профориентационная и др.).
+
+Администрирование ресурсов (каталогов, учебных групп, прав доступа).
+
+Отображение расписаний и предоставление учебных материалов для студентов и преподавателей.
+
+Внутренние уведомления о событиях (приближающиеся дедлайны, изменения расписания, сообщения от администрации) на странице уведомлений во фронтенде.
+
+Генерацию статистики и отчётов по задачам и активности пользователей.
+
+2. Стек технологий
+
+Язык: Java 17
+
+Фреймворк: Spring Boot
+
+ORM: Hibernate + Lombok
+
+Сборка: Gradle
+
+База данных: PostgreSQL
+
+Аутентификация: JWT (access-токен 15 мин, refresh-токен 24 ч) через /auth/refresh
+
+Хеширование паролей: bcrypt
+
+Хранение файлов: Minio (S3-совместимо) для вложений и учебных материалов
+
+Контейнеризация: не требуется (монолит)
+
+3. Архитектура
+
+Монолит с разделением на слои: контроллеры (REST API), сервисы, репозитории (Spring Data JPA).
+
+Модели оформляются через Lombok (@Entity, @Data, @Builder).
+
+Фронтенд реализуется отдельно на Vue 3 и взаимодействует исключительно через REST.
+
+4. Роли и права доступа
+
+ADMIN: полный контроль: управление пользователями, группами, ресурсами, задачами, отчётами.
+
+STAFF: создание и выполнение задач/проектов, просмотр собственной статистики.
+
+TEACHER: просмотр и загрузка расписаний, материалов; работа с назначенными группами; создание домашних заданий.
+
+STUDENT: просмотр расписания, скачивание материалов и форм, просмотр собственных задач.
+
+Права конфигурируются на уровне эндпоинтов через Spring Security.
+
+5. Сущности и их связи
+
+User: id, username, email, passwordHash, roles, department, groups.
+
+Role: id, name.
+
+Group: id, name, members (User).
+
+Resource: id, name, type (каталог, форма), url, allowedRoles, allowedGroups.
+
+Project: id, title, description, deadline, category, owner, participants (User).
+
+Task: id, title, description, status (TODO, IN_PROGRESS, DONE, ON_HOLD), priority, weight, deadline, project (optional), assignees (User).
+
+Attachment: id, fileName, url, привязка к Task или Resource.
+
+Comment: id, author (User), content, createdAt, привязка к Task или Project.
+
+ScheduleEntry: id, group, teacher, subject, dateTime, location.
+
+Notification: id, user, type (DEADLINE_REMINDER, SCHEDULE_CHANGE, ADMIN_MESSAGE), payload, createdAt, read.
+
+ReportRequest: параметры генерации отчёта (периоды, фильтры).
+
+6. Функциональные требования
+
+6.1 Аутентификация и управление пользователями
+
+POST /auth/register — регистрация (роль STUDENT/STAFF по умолчанию).
+
+POST /auth/login — получение JWT.
+
+POST /auth/refresh — обновление access-токена.
+
+ADMIN: GET /users, GET /users/{id}, PUT /users/{id}, DELETE /users/{id}.
+
+ADMIN: GET/POST/PUT/DELETE /groups.
+
+ADMIN: GET/POST/PUT/DELETE /resources.
+
+6.2 Управление задачами и проектами
+
+GET /projects — список по фильтрам (владелец, категория).
+
+POST /projects — создание.
+
+GET /projects/{id}, PUT /projects/{id}, DELETE /projects/{id}.
+
+GET /tasks — список (фильтры: проект, исполнитель).
+
+POST /tasks — создание задачи (включая projectId или без проекта и список assigneeIds).
+
+GET /tasks/{id}, PUT /tasks/{id} — редактирование задачи (статус, приоритет, вес, дедлайн, assignees).
+
+DELETE /tasks/{id} — удаление.
+
+Комментарии к задачам:
+
+GET /tasks/{id}/comments — список комментариев.
+
+POST /tasks/{id}/comments — добавить комментарий (текст).
+
+Вложения: POST /tasks/{id}/attachments, GET /tasks/{id}/attachments/{attId}, DELETE /tasks/{id}/attachments/{attId}.
+
+6.3 Учебные расписания и материалы
+
+Функциональные требования
+
+6.1 Аутентификация и управление пользователями
+
+POST /auth/register — регистрация (роль STUDENT/STAFF по умолчанию).
+
+POST /auth/login — получение JWT.
+
+POST /auth/refresh — обновление access-токена.
+
+ADMIN: GET /users, GET /users/{id}, PUT /users/{id}, DELETE /users/{id}.
+
+ADMIN: GET/POST/PUT/DELETE /groups.
+
+ADMIN: GET/POST/PUT/DELETE /resources.
+
+6.2 Управление задачами и проектами
+
+GET /projects — список по фильтрам (владелец, категория).
+
+POST /projects — создание.
+
+GET /projects/{id}, PUT /projects/{id}, DELETE /projects/{id}.
+
+GET /tasks — список (фильтры: проект, исполнитель).
+
+POST /tasks — создание задачи.
+
+GET /tasks/{id}, PUT /tasks/{id}, DELETE /tasks/{id}.
+
+Вложения: POST /tasks/{id}/attachments, GET /tasks/{id}/attachments/{attId}, DELETE /tasks/{id}/attachments/{attId}.
+
+6.3 Учебные расписания и материалы
+
+ADMIN: POST /schedule, PUT /schedule/{id}, DELETE /schedule/{id} (ручная загрузка через админ-панель).
+
+GET /schedule?group={id}&date={yyyy-MM-dd} — просмотр расписания.
+
+ADMIN: POST /resources/{id}/attachments — загрузка материалов/форм.
+
+GET /resources/{id}/attachments, GET /resources/{id}/attachments/{attId}.
+
+6.4 Внутренние уведомления
+
+Scheduled job создаёт уведомления о дедлайнах за 24 ч до срока.
+
+При изменении расписания или отправке административного сообщения автоматически создаются уведомления.
+
+GET /notifications — список уведомлений текущего пользователя.
+
+POST /notifications/{id}/mark-read — отметить уведомление прочитанным.
+
+6.5 Статистика и отчётность
+
+GET /reports/tasks?from={date}&to={date} — отчёт по задачам: количество, среднее время выполнения, суммарный вес.
+
+GET /reports/activity?group={id}&period={period} — статистика по активности пользователей.
+
+7. Нефункциональные требования
+
+Безопасность: HTTPS, JWT, bcrypt.
+
+Производительность: обрабатывать до 500 одновременных запросов.
+
+Логирование: ошибки и события авторизации.
+
+Резервное копирование: регулярное сохранение данных вне приложения.
+
+Тестирование не требуется согласно уточнению заказчика.

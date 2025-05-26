@@ -1,0 +1,205 @@
+В вашем приложении «сотрудники» (Staff) и «преподаватели» (Teacher) действительно во многом похожи, но есть важные отличия по набору их дел и прав
+
+ Staff (сотрудник)
+  – Это любой штатный сотрудник (административный персонал, методисты, кураторы, организаторы), который занимается дополнительными проектами и задачами (профориентация, воспитательная работа, имидж-мероприятия).
+  – Основная их зона работы — проектызадачи, административные дела, отчёты по выполнению планов.
+  – Они не ведут учебные занятия по расписанию, но могут быть упомянуты в расписании (например, куратор группы).
+
+ Teacher (преподаватель)
+  – Это тот же сотрудник, но с правами преподавателя ведёт конкретные группы студентов, загружает учебные материалы, создаёт домашние задания.
+  – Умеет управлять и просматривать расписание своих занятий, загружать материалы именно для своей аудитории.
+  – Может участвовать в тех же проектах и задачах, что и Staff, но основная их деятельность — учебный процесс и взаимодействие со своей группой.
+
+ Итого сотрудники фокусируются на дополнительных проектахзадачах и администрировании, а преподаватели — на расписании и учебных материалах, плюс у них есть права Staff внутри проектов, когда они к ним привязаны.
+
+---
+
+## Страницы фронтенда и их содержимое
+
+Ниже список всех страниц (views) в Vue 3 и ключевых элементов на них для полного покрытия бизнес-логики.
+
+### 1. Общие
+
+1. Login
+   – Поля Email, Password
+   – Кнопка «Login»
+   – Ссылки «Forgot password», «Register» (если разрешена саморегистрация)
+
+2. Not Authorized  403
+   – Сообщение «Доступ запрещён»
+   – Кнопка «На главную»
+
+3. Not Found  404
+   – Сообщение «Страница не найдена»
+   – Кнопка «На главную»
+
+4. Navbar  Sidebar (все страницы, где нужно)
+   – Логотип, название приложения
+   – Меню с пунктами в зависимости от роли
+   – Иконка уведомлений с бейджем непрочитанных
+   – Кнопка «Logout»
+
+---
+
+### 2. Административная панель (ADMIN)
+
+#### 2.1 Dashboard (`admindashboard`)
+
+– Четыре карточки
+• Всего пользователей → кликабельна → Users
+• Активных проектов → Projects
+• Открытых задач → Tasks
+• Непрочитанных уведомлений → Notifications
+– График активности за последний месяц (опционально).
+
+#### 2.2 Users Management (`adminusers`)
+
+– Таблица ID  Username  Email  Роли  Группа  Действия(EditDelete)
+– Фильтры по роли, по группе, по email
+– Кнопка «Create User» → открывает форму
+• Username, Email, Password
+• Roles (multiselect)
+• Department (select)
+• Groups (multiselect)
+– Inline-валидация, подтверждение “User created.”
+
+#### 2.3 Groups Management (`admingroups`)
+
+– Таблица ID  Название  # участников  Actions(EditDelete)
+– «Create Group» → форма Name, Participants (multiselect)
+
+#### 2.4 Resources Management (`adminresources`)
+
+– Таблица ID  Name  Type  URL  Allowed Roles  Allowed Groups  Actions
+– «Create Resource» → форма
+• Name, Type (каталогформа), URL
+• Allowed Roles (multiselect), Allowed Groups (multiselect)
+– Вкладка «Attachments» внутри Resource Detail для загрузки файлов
+
+#### 2.5 Schedule Management (`adminschedule`)
+
+– Таблица ID  Group  Teacher  Subject  DateTime  Location  Actions
+– «Create»  «Edit» → форма Group, Teacher, Subject, DateTime (datetime-picker), Location
+
+#### 2.6 Projects & Tasks
+
+– `adminprojects` и `admintasks`
+– Аналогично STAFF (см. ниже), но с правом видетьредактироватьудалять любые записи.
+
+#### 2.7 Reports (`adminreports`)
+
+– Панель фильтров Date From, Date To, GroupRoleProject (select)
+– Кнопки «Generate Tasks Report»  «Generate Activity Report»
+– Таблица + график результатов
+
+#### 2.8 Notifications (`adminnotifications`)
+
+– Список уведомлений Checkbox  Type  Payload  CreatedAt  Status  Actions
+– Buttons «Mark Selected Read», «Mark All Read»
+– «Create Admin Message» → форма Recipient (usergroup), Type (ADMIN_MESSAGE), Content
+
+---
+
+### 3. STAFF
+
+#### 3.1 Dashboard (`staffdashboard`)
+
+– Виджеты
+• Мои проекты (count + link)
+• Мои задачи (count + link)
+• Предстоящие дедлайны (list ближайших 5)
+
+#### 3.2 Projects (`staffprojects`)
+
+– Таблица Title  Deadline  Category  Owner  #Tasks  Actions(CreateViewEditDelete)
+– Фильтры Category, Owner=self
+– CreateEdit Form Title, Description, Deadline, Category, Participants (multiselect)
+
+#### 3.3 Tasks (`stafftasks`)
+
+– Таблица Title  Status  Priority  Deadline  Project  Actions(ViewEditDelete)
+– Фильтры Project, Assignee=self, Status
+– «Create Task» → форма Title, Description, Deadline, Priority, Weight, Project (opt), Assignees
+– Task Detail
+• Заголовок, описание, статус, приоритет, вес, дедлайн, проект
+• Comments section список + поле «Add Comment»
+• Attachments Upload button, список с DownloadDelete
+
+#### 3.4 Notifications (`staffnotifications`)
+
+– Список Type  Payload  CreatedAt  Read checkbox
+– Button «Mark All Read»
+
+#### 3.5 Reports (`staffreports`)
+
+– Как у ADMIN, но фильтрация только по своим задачампроектам
+
+---
+
+### 4. TEACHER
+
+#### 4.1 Dashboard (`teacherdashboard`)
+
+– Cards
+• Расписание на сегодня (список занятий)
+• Загрузить материал (shortcut link)
+
+#### 4.2 Schedule Viewer (`teacherschedule`)
+
+– Фильтры Group (multiselect, только назначенные), Date (date-picker)
+– Таблица Time  Subject  Group  Location
+
+#### 4.3 Materials (`teacherresources`)
+
+– Список ресурсов, к которым у него есть доступ, и своих загруженных
+• ID  Name  Type  UploadedAt  Actions(DownloadDelete)
+– «Upload Material» → форма Resource(select) or New Resource form, File selector
+
+#### 4.4 Projects & Tasks (`teachertasks`)
+
+– Как у STAFF, но только в проектахзадачах, где он участник
+
+#### 4.5 Notifications (`teachernotifications`)
+
+– То же, что у STAFF
+
+---
+
+### 5. STUDENT
+
+#### 5.1 Dashboard (`studentdashboard`)
+
+– Cards
+• Расписание на сегодня (для своей группы)
+• Мои задачи (count + link)
+• Доступные ресурсы (count + link)
+
+#### 5.2 Schedule Viewer (`studentschedule`)
+
+– По умолчанию показывает расписание его группы на текущую дату
+– Date-picker для смены даты
+
+#### 5.3 Resources (`studentresources`)
+
+– Таблица Name  Type  Actions(Download)
+
+#### 5.4 Tasks (`studenttasks`)
+
+– Таблица Title  Status  Deadline  Actions(Mark as DoneView)
+– Task Detail
+• Полное описание, статус, приоритет, вес, дедлайн
+• Comments (просмотр + Add Comment)
+• Attachments (Download only)
+
+#### 5.5 Notifications (`studentnotifications`)
+
+– Список внутренних уведомлений, «Mark All Read»
+
+---
+
+ Замечания по нагрузке
+ – Приложение рассчитано на 10–15 пользователей, поэтому сложных оптимизаций не требуется.
+ – Все страницы могут в начале грузить данные через один-два API-запроса, а затем подгружать подробности по мере навигации.
+ – Для удобства навигации — хлебные крошки и быстрые ссылки в sidebar.
+
+Таким образом, у вас будет полный набор страниц и компонентов для фронтенда, покрывающий всю описанную бизнес-логику и роли пользователей.

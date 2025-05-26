@@ -1,0 +1,207 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Diploma Projects",
+		"description": "API tests for Diploma Project",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Create Report",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"STUDENT_PERFORMANCE\",\n    \"startDate\": \"2024-01-01T00:00:00\",\n    \"endDate\": \"2024-12-31T23:59:59\",\n    \"parameters\": \"{\\\"studentId\\\":\\\"{{studentId}}\\\"}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/reports",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports"]
+						},
+						"description": "Create a new report request"
+					}
+				},
+				{
+					"name": "Get User Reports",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/user?page=0&size=10&sort=createdAt,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "user"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sort",
+									"value": "createdAt,desc"
+								}
+							]
+						},
+						"description": "Get all reports for the authenticated user"
+					}
+				},
+				{
+					"name": "Get Reports By Type",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/user/type/STUDENT_PERFORMANCE?page=0&size=10&sort=createdAt,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "user", "type", "STUDENT_PERFORMANCE"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sort",
+									"value": "createdAt,desc"
+								}
+							]
+						},
+						"description": "Get reports by type for the authenticated user"
+					}
+				},
+				{
+					"name": "Get Reports By Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/user/status/COMPLETED?page=0&size=10&sort=createdAt,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "user", "status", "COMPLETED"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sort",
+									"value": "createdAt,desc"
+								}
+							]
+						},
+						"description": "Get reports by status for the authenticated user"
+					}
+				},
+				{
+					"name": "Get Pending Reports (Admin Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/pending?page=0&size=10&sort=createdAt,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "pending"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sort",
+									"value": "createdAt,desc"
+								}
+							]
+						},
+						"description": "Get all pending reports (admin only)"
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		},
+		{
+			"key": "adminToken",
+			"value": "your_admin_jwt_token_here",
+			"type": "string"
+		},
+		{
+			"key": "studentId",
+			"value": "student_uuid_here",
+			"type": "string"
+		}
+	]
+} 

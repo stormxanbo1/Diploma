@@ -1,0 +1,120 @@
+## Техническое задание на бэкенд веб-приложения для управления задачами, проектами и учебными ресурсами
+
+### 1. Цель и область применения
+
+Разработать монолитную бэкенд-часть веб-приложения для сотрудников и студентов учебного заведения. Система должна обеспечивать:
+
+* Учёт и управление дополнительными задачами и проектами сотрудников (воспитательная работа, профориентация и др.).
+* Администрирование ресурсов (каталогов, учебных групп, прав доступа).
+* Отображение расписаний и предоставление учебных материалов для студентов и преподавателей.
+* Внутренние уведомления о событиях (приближающиеся дедлайны, изменения расписания, сообщения от администрации) на странице уведомлений во фронтенде.
+* Генерацию статистики и отчётов по задачам и активности пользователей.
+
+### 2. Стек технологий
+
+* **Язык**: Java 17
+* **Фреймворк**: Spring Boot
+* **ORM**: Hibernate + Lombok
+* **Сборка**: Gradle
+* **База данных**: PostgreSQL
+* **Аутентификация**: JWT (access-токен 15 мин, refresh-токен 24 ч) через `/auth/refresh`
+* **Хеширование паролей**: bcrypt
+* **Хранение файлов**: Minio (S3-совместимо) для вложений и учебных материалов
+* **Контейнеризация**: не требуется (монолит)
+
+### 3. Архитектура
+
+* Монолит с разделением на слои: контроллеры (REST API), сервисы, репозитории (Spring Data JPA).
+* Модели оформляются через Lombok (`@Entity`, `@Data`, `@Builder`).
+* Фронтенд реализуется отдельно на Vue 3 и взаимодействует исключительно через REST.
+
+### 4. Роли и права доступа
+
+* **ADMIN**: полный контроль: управление пользователями, группами, ресурсами, проектами, задачами, расписанием, отчётами, уведомлениями.
+* **STAFF**: создание и выполнение задач и проектов, просмотр собственной статистики.
+* **TEACHER**: просмотр и загрузка расписаний и материалов, работа с назначенными группами, создание домашних заданий, участие в проектах как assignee.
+* **STUDENT**: просмотр расписания, скачивание материалов и форм, просмотр и отметка своих задач.
+* Права конфигурируются на уровне эндпоинтов через Spring Security.
+
+### 5. Сущности и их связи
+
+1. **User**: `id`, `username`, `email`, `passwordHash`, `roles`, `department`, `groups`.
+2. **Role**: `id`, `name`.
+3. **Group**: `id`, `name`, `members` (User).
+4. **Resource**: `id`, `name`, `type` (каталог, форма), `url`, `allowedRoles`, `allowedGroups`.
+5. **Project**: `id`, `title`, `description`, `deadline`, `category`, `owner` (User), `participants` (User).
+6. **Task**: `id`, `title`, `description`, `status` (TODO, IN\_PROGRESS, DONE, ON\_HOLD), `priority`, `weight`, `deadline`, `projectId` (optional), `assignees` (User).
+7. **Attachment**: `id`, `fileName`, `url`, привязка к **Task** или **Resource**.
+8. **Comment**: `id`, `author` (User), `content`, `createdAt`, `taskId` (optional), `projectId` (optional).
+9. **ScheduleEntry**: `id`, `group` (Group), `teacher` (User), `subject`, `dateTime`, `location`.
+10. **Notification**: `id`, `user` (User), `type` (DEADLINE\_REMINDER, SCHEDULE\_CHANGE, ADMIN\_MESSAGE), `payload`, `createdAt`, `read`.
+11. **ReportRequest**: *(если требуется хранить заявки)* `id`, `createdBy` (User), `fromDate`, `toDate`, `type` (TASKS, ACTIVITY).
+
+### 6. Функциональные требования
+
+#### 6.1 Аутентификация и управление аккаунтами
+
+* `POST /auth/register` — регистрация (роль STUDENT или STAFF по умолчанию).
+* `POST /auth/login` — получение JWT (access + refresh).
+* `POST /auth/refresh` — обновление access-токена по refresh-токену.
+* **ADMIN**:
+
+  * `GET /users`
+  * `GET /users/{id}`
+  * `PUT /users/{id}`
+  * `DELETE /users/{id}`
+  * `GET /groups`, `POST /groups`, `PUT /groups/{id}`, `DELETE /groups/{id}`
+  * `GET /resources`, `POST /resources`, `PUT /resources/{id}`, `DELETE /resources/{id}`
+
+#### 6.2 Управление задачами и проектами
+
+* **Projects**:
+
+  * `GET /projects?ownerId={id}&category={category}`
+  * `POST /projects`
+  * `GET /projects/{id}`, `PUT /projects/{id}`, `DELETE /projects/{id}`
+  * Комментарии к проектам (опционально): `GET /projects/{id}/comments`, `POST /projects/{id}/comments`, `DELETE /projects/{id}/comments/{commentId}`
+* **Tasks**:
+
+  * `GET /tasks?projectId={id}&assigneeId={id}&status={status}`
+  * `POST /tasks` — `projectId` может отсутствовать, `assigneeIds` список.
+  * `GET /tasks/{id}`, `PUT /tasks/{id}`, `DELETE /tasks/{id}`
+  * Комментарии: `GET /tasks/{id}/comments`, `POST /tasks/{id}/comments`, `DELETE /tasks/{id}/comments/{commentId}`
+  * Вложения: `POST /tasks/{id}/attachments`, `GET /tasks/{id}/attachments/{attId}`, `DELETE /tasks/{id}/attachments/{attId}`
+
+#### 6.3 Учебные расписания и материалы
+
+* **Schedule** (ручная загрузка админом):
+
+  * `POST /schedule`, `PUT /schedule/{id}`, `DELETE /schedule/{id}`
+  * `GET /schedule?group={id}&date={yyyy-MM-dd}`
+* **Resources Attachments**:
+
+  * `POST /resources/{id}/attachments`
+  * `GET /resources/{id}/attachments`, `GET /resources/{id}/attachments/{attId}`
+
+#### 6.4 Внутренние уведомления
+
+* Scheduled job (`@Scheduled(cron = "0 0 * * * *")`) создаёт уведомления о дедлайнах за 24 ч до срока.
+* При изменении расписания или отправке админ-сообщения создаются уведомления.
+* `GET /notifications` — получить список уведомлений текущего пользователя.
+* `POST /notifications/{id}/mark-read` — пометить уведомление прочитанным.
+
+#### 6.5 Статистика и отчётность
+
+* **Tasks Report**: `GET /reports/tasks?from={date}&to={date}` — возвращает:
+
+  * `count` — число задач
+  * `averageCompletionTime` — среднее время от создания до выполнения
+  * `totalWeight` — суммарный вес
+* **Activity Report**: `GET /reports/activity?from={date}&to={date}&groupId={id}` — параметры дат `YYYY-MM-DD`; возвращает статистику действий (создание/редактирование/удаление) по группам или пользователям.
+
+### 7. Нефункциональные требования
+
+* **Безопасность**: HTTPS, JWT, bcrypt.
+* **Производительность**: обрабатывать до 500 одновременных запросов (10–15 активных пользователей).
+* **Логирование**: SLF4J — ошибки, события авторизации (login/logout).
+* **Резервное копирование**: регулярное сохранение данных вне приложения (система-бэкап).
+* **Тестирование**: не требуется согласно уточнению заказчика.
+
+*Документ обновлён с учётом устранения дублирования, уточнения эндпоинтов для комментариев и корректировки параметров отчётов.*
