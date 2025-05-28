@@ -1,3 +1,4 @@
+
 package com.diploma.backend.service;
 
 import com.diploma.backend.dto.CreateProjectRequest;
@@ -23,12 +24,12 @@ public class ProjectService {
     public ProjectDto create(CreateProjectRequest req, String creatorEmail) {
         User creator = userRepo.findByEmail(creatorEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
-                
+
         Set<User> participants = new HashSet<>();
         if (req.getParticipantIds() != null && !req.getParticipantIds().isEmpty()) {
             participants = new HashSet<>(userRepo.findAllById(req.getParticipantIds()));
         }
-        
+
         Project project = Project.builder()
                 .name(req.getName())
                 .description(req.getDescription())
@@ -37,7 +38,7 @@ public class ProjectService {
                 .creator(creator)
                 .participants(participants)
                 .build();
-                
+
         Project saved = projectRepo.save(project);
         return toDto(saved);
     }
@@ -60,7 +61,7 @@ public class ProjectService {
 
     public List<ProjectDto> listFiltered(UUID ownerId, String category) {
         List<Project> projects;
-        
+
         if (ownerId != null && category != null) {
             // Фильтруем по обоим параметрам
             projects = projectRepo.findByCreator_IdOrParticipants_Id(ownerId, ownerId)
@@ -74,7 +75,7 @@ public class ProjectService {
             // Только по категории
             projects = projectRepo.findByCategory(category);
         }
-        
+
         return projects.stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -91,18 +92,19 @@ public class ProjectService {
         Project project = projectRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Project not found"));
         checkAccess(project, userEmail);
-        
+
         project.setName(req.getName());
         project.setDescription(req.getDescription());
         project.setCategory(req.getCategory());
         project.setDeadline(req.getDeadline());
-        
+
         // Обновляем участников если указаны
         if (req.getParticipantIds() != null) {
             Set<User> participants = new HashSet<>(userRepo.findAllById(req.getParticipantIds()));
+
             project.setParticipants(participants);
         }
-        
+
         Project updated = projectRepo.save(project);
         return toDto(updated);
     }
@@ -122,7 +124,7 @@ public class ProjectService {
                 .map(u -> u.getRoles().stream()
                         .anyMatch(r -> r.name().equals("STAFF") || r.name().equals("ADMIN")))
                 .orElse(false);
-                
+
         if (!isCreator && !isParticipant && !isStaffOrAdmin) {
             throw new SecurityException("Доступ запрещён");
         }

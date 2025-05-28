@@ -27,6 +27,7 @@ public class CommentController {
             @PathVariable UUID taskId,
             @Valid @RequestBody CreateCommentRequest req,
             Authentication auth) {
+        System.out.println("AUTH GET NAME!!!!!!!!!!!!!!!!!!!!!!!  "+auth.getName());
         CommentDto dto = commentService.addToTask(taskId, req, auth.getName());
         return ResponseEntity
                 .created(URI.create("/api/tasks/" + taskId + "/comments/" + dto.getId()))

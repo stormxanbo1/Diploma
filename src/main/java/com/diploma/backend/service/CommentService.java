@@ -1,3 +1,4 @@
+
 package com.diploma.backend.service;
 
 import com.diploma.backend.dto.CommentDto;
@@ -7,8 +8,8 @@ import com.diploma.backend.exception.NotFoundException;
 import com.diploma.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.PropertyMap;
+//import org.modelmapper.ModelMapper;
+//import org.modelmapper.PropertyMap;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +27,7 @@ public class CommentService {
     private final ProjectRepository projectRepo;
     private final CommentRepository commentRepo;
     private final UserRepository userRepo;
-    private final ModelMapper mapper;
+//    private final ModelMapper mapper;
 
     /* ---------- создать ---------- */
 
@@ -37,11 +38,6 @@ public class CommentService {
         User author = userRepo.findByEmail(authorEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Логируем авторизацию
-        if (author == null) {
-            log.error("User with email {} not found", authorEmail);
-        }
-
         Comment c = Comment.builder()
                 .text(req.getText())
                 .author(author)
@@ -51,6 +47,7 @@ public class CommentService {
         log.debug("Comment created for task {}: {} by user {}", taskId, saved.getId(), authorEmail);
         return toDto(saved);
     }
+
 
     @Transactional
     public CommentDto addToProject(UUID projectId, CreateCommentRequest req, String authorEmail) {
@@ -104,18 +101,22 @@ public class CommentService {
         log.debug("Comment {} deleted by user {}", commentId, userEmail);
     }
 
-    private CommentDto toDto(Comment c) {
-        // Маппируем Comment в CommentDto
-        CommentDto dto = mapper.map(c, CommentDto.class);
-        // Явное объединение firstName и lastName в одно поле authorName
-        if (c.getAuthor() != null) {
-            dto.setAuthorName(c.getAuthor().getFirstName() + " " + c.getAuthor().getLastName());
-            dto.setAuthorId(c.getAuthor().getId());
+    private CommentDto toDto(Comment comment) {
+        CommentDto dto = new CommentDto();
+        dto.setId(comment.getId());
+        dto.setText(comment.getText());
+        dto.setCreatedAt(comment.getCreatedAt());
+
+        if (comment.getAuthor() != null) {
+            dto.setAuthorId(comment.getAuthor().getId());
+            dto.setAuthorName(comment.getAuthor().getFirstName() + " " + comment.getAuthor().getLastName());
         } else {
-            // Если автор отсутствует, устанавливаем значения по умолчанию
-            dto.setAuthorName("");
             dto.setAuthorId(null);
+            dto.setAuthorName("");
         }
+
         return dto;
     }
+
+
 }

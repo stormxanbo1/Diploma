@@ -1,4 +1,4 @@
-// src/main/java/com/diploma/backend/service/GroupService.java
+
 package com.diploma.backend.service;
 
 import com.diploma.backend.dto.CreateGroupRequest;
@@ -9,7 +9,6 @@ import com.diploma.backend.exception.NotFoundException;
 import com.diploma.backend.repository.GroupRepository;
 import com.diploma.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +21,6 @@ public class GroupService {
 
     private final GroupRepository groupRepo;
     private final UserRepository userRepo;
-    private final ModelMapper mapper;
 
     /* ---------- CRUD ---------- */
 
@@ -35,7 +33,6 @@ public class GroupService {
                 .creator(creator)
                 .build();
 
-        // добавляем выбранных участников + создателя
         Set<User> members = new HashSet<>();
         if (req.getMemberIds() != null) {
             members.addAll(userRepo.findAllById(req.getMemberIds()));
@@ -46,7 +43,6 @@ public class GroupService {
         return toDto(groupRepo.save(g));
     }
 
-    /** Мои группы (созданные мною или где я участник). ADMIN/STAFF — видят все */
     public List<GroupDto> listMy(String userEmail) {
         boolean isStaffOrAdmin = userRepo.findByEmail(userEmail)
                 .map(u -> u.getRoles().stream()
@@ -83,7 +79,6 @@ public class GroupService {
 
         if (req.getMemberIds() != null) {
             Set<User> members = new HashSet<>(userRepo.findAllById(req.getMemberIds()));
-            // гарантируем, что создатель остаётся в группе
             members.add(g.getCreator());
             g.setMembers(members);
         }
@@ -119,6 +114,7 @@ public class GroupService {
             throw new NotFoundException("User is not a member of this group");
         }
         return toDto(groupRepo.save(g));
+
     }
 
     /* ---------- helpers ---------- */
@@ -135,7 +131,9 @@ public class GroupService {
     }
 
     private GroupDto toDto(Group g) {
-        GroupDto dto = mapper.map(g, GroupDto.class);
+        GroupDto dto = new GroupDto();
+        dto.setId(g.getId());
+        dto.setName(g.getName());
         dto.setCreatorId(g.getCreator().getId());
         dto.setMemberIds(g.getMembers().stream()
                 .map(User::getId)

@@ -7,7 +7,7 @@ import com.diploma.backend.exception.NotFoundException;
 import com.diploma.backend.repository.TaskRepository;
 import com.diploma.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
+
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
-    private final ModelMapper mapper;
+
 
     public TaskDto create(CreateTaskRequest req, String userEmail) {
         User creator = userRepository.findByEmail(userEmail)
@@ -101,7 +101,9 @@ public class TaskService {
                 .orElseThrow(() -> new NotFoundException("Task not found"));
         checkAccess(task, userEmail);
 
-        Set<User> toAdd = new HashSet<>(userRepository.findAllById(assigneeIds));
+        Set<User> toAdd = new
+
+                HashSet<>(userRepository.findAllById(assigneeIds));
         if (toAdd.isEmpty()) {
             throw new NotFoundException("No users found for given IDs");
         }
@@ -123,11 +125,20 @@ public class TaskService {
     }
 
     private TaskDto toDto(Task task) {
-        TaskDto dto = mapper.map(task, TaskDto.class);
-        dto.setCreatorId(task.getCreator().getId());
-        dto.setAssigneeIds(task.getAssignees().stream()
-                .map(User::getId)
-                .collect(Collectors.toSet()));
+        TaskDto dto = new TaskDto();
+        dto.setId(task.getId());
+        dto.setTitle(task.getTitle());
+        dto.setDescription(task.getDescription());
+        dto.setStatus(task.getStatus());
+        dto.setPriority(task.getPriority());
+        dto.setWeight(task.getWeight());
+        dto.setDeadline(task.getDeadline());
+        dto.setCreatorId(task.getCreator() != null ? task.getCreator().getId() : null);
+        dto.setAssigneeIds(task.getAssignees() != null
+                ? task.getAssignees().stream().map(User::getId).collect(Collectors.toSet())
+                : new HashSet<>());
+        // Добавь остальные нужные поля из Task в TaskDto здесь
         return dto;
     }
+
 }

@@ -7,7 +7,7 @@ import com.diploma.backend.entity.User;
 import com.diploma.backend.exception.NotFoundException;
 import com.diploma.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +22,7 @@ public class UserService {
 
     private final UserRepository userRepo;
     private final PasswordEncoder encoder;
-    private final ModelMapper mapper;
+
 
     /* ---------- CRUD ---------- */
 
@@ -81,7 +81,13 @@ public class UserService {
     /* ---------- helpers ---------- */
 
     private UserDto toDto(User u) {
-        return mapper.map(u, UserDto.class);
+        UserDto dto = new UserDto();
+        dto.setId(u.getId());
+        dto.setEmail(u.getEmail());
+        dto.setFirstName(u.getFirstName());
+        dto.setLastName(u.getLastName());
+        dto.setRoles(u.getRoles());
+        return dto;
     }
 
     private Set<Role> defaultRoles(Set<Role> roles) {
