@@ -2,6 +2,7 @@ package com.diploma.backend.dto;
 
 import lombok.Data;
 import jakarta.validation.constraints.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
@@ -14,4 +15,5 @@ public class CreateProjectRequest {
     private String category;
     private LocalDateTime deadline;
     private Set<UUID> participantIds;
+    private UUID ownerId;  // Добавлено поле ownerId
 }

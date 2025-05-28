@@ -1,4 +1,3 @@
-// src/main/java/com/diploma/backend/service/CommentService.java
 package com.diploma.backend.service;
 
 import com.diploma.backend.dto.CommentDto;
@@ -9,6 +8,7 @@ import com.diploma.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.PropertyMap;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +36,11 @@ public class CommentService {
                 .orElseThrow(() -> new NotFoundException("Task not found"));
         User author = userRepo.findByEmail(authorEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
+
+        // Логируем авторизацию
+        if (author == null) {
+            log.error("User with email {} not found", authorEmail);
+        }
 
         Comment c = Comment.builder()
                 .text(req.getText())
@@ -78,8 +83,6 @@ public class CommentService {
                 .map(this::toDto).collect(Collectors.toList());
     }
 
-    /* ---------- удалить (автор или STAFF/ADMIN) ---------- */
-
     @Transactional
     public void delete(UUID commentId, String userEmail) {
         Comment comment = commentRepo.findById(commentId)
@@ -101,12 +104,18 @@ public class CommentService {
         log.debug("Comment {} deleted by user {}", commentId, userEmail);
     }
 
-    /* ---------- helper ---------- */
-
     private CommentDto toDto(Comment c) {
+        // Маппируем Comment в CommentDto
         CommentDto dto = mapper.map(c, CommentDto.class);
-        dto.setAuthorId(c.getAuthor().getId());
-        dto.setAuthorName(c.getAuthor().getFirstName() + " " + c.getAuthor().getLastName());
+        // Явное объединение firstName и lastName в одно поле authorName
+        if (c.getAuthor() != null) {
+            dto.setAuthorName(c.getAuthor().getFirstName() + " " + c.getAuthor().getLastName());
+            dto.setAuthorId(c.getAuthor().getId());
+        } else {
+            // Если автор отсутствует, устанавливаем значения по умолчанию
+            dto.setAuthorName("");
+            dto.setAuthorId(null);
+        }
         return dto;
     }
 }

@@ -5,12 +5,11 @@ import com.diploma.backend.dto.CreateResourceRequest;
 import com.diploma.backend.dto.ResourceDto;
 import com.diploma.backend.entity.Group;
 import com.diploma.backend.entity.Resource;
-import com.diploma.backend.entity.Role;
 import com.diploma.backend.entity.User;
 import com.diploma.backend.repository.ResourceRepository;
 import com.diploma.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ResourceService {
@@ -33,23 +33,26 @@ public class ResourceService {
         User me = userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
 
-        if (me.getRoles().contains(Role.ADMIN)) {
-            return resourceRepository.findAll().stream()
-                    .map(ResourceDto::fromEntity)
-                    .collect(Collectors.toList());
-        }
-
-        Role myRole = me.getRoles().stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("У пользователя нет роли"));
+        log.debug("User: {}, Groups: {}", me.getEmail(), me.getGroups().size());
 
         List<UUID> myGroupIds = me.getGroups().stream()
-                .map(Group::getId)
+                .map(group -> group.getId())
                 .collect(Collectors.toList());
 
-        return resourceRepository
-                .findAccessibleResourcesByRoleOrGroups(myRole, myGroupIds)
-                .stream()
+        log.debug("User group IDs: {}", myGroupIds);
+
+        // Используем новый метод для получения доступных ресурсов
+        List<Resource> resources = getAccessibleResources(myGroupIds);
+
+        log.debug("Found {} resources", resources.size());
+
+        // Логируем каждый ресурс для отладки
+        resources.forEach(r ->
+                log.debug("Resource: id={}, name={}, allowedGroups={}",
+                        r.getId(), r.getName(), r.getAllowedGroupIds())
+        );
+
+        return resources.stream()
                 .map(ResourceDto::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -57,43 +60,29 @@ public class ResourceService {
     @Transactional(readOnly = true)
     public ResourceDto getById(UUID id, String email) {
         User me = userService.getByEmail(email);
-        Role myRole = me.getRoles().stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("У пользователя нет роли"));
 
         List<UUID> myGroupIds = me.getGroups().stream()
-                .map(Group::getId)
+                .map(group -> group.getId())
                 .collect(Collectors.toList());
 
-        // Получаем ресурс только если он доступен по роли или группам
-        Resource resource = resourceRepository
-                .findAccessibleResourcesByRoleOrGroups(myRole, myGroupIds)
+        // Используем новый метод для получения доступных ресурсов
+        Resource resource = getAccessibleResources(myGroupIds)
                 .stream()
                 .filter(r -> r.getId().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new AccessDeniedException("Access denied"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found or access denied"));
 
         return ResourceDto.fromEntity(resource);
     }
 
-
     @Transactional
     public ResourceDto update(UUID id, CreateResourceRequest req, String userEmail) {
-        User me = userService.getByEmail(userEmail);
-        // только STAFF и ADMIN могут редактировать
-        boolean canEdit = me.getRoles().contains(Role.ADMIN) || me.getRoles().contains(Role.STAFF);
-        if (!canEdit) {
-            throw new AccessDeniedException("Только STAFF и ADMIN могут изменять ресурсы");
-        }
-
         Resource r = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found: " + id));
 
-        // обновляем поля
         r.setName(req.getName());
         r.setType(req.getType());
         r.setUrl(URI.create(req.getUrl()).toString());
-        r.setAllowedRoles(req.getAllowedRoles());
         r.setAllowedGroupIds(req.getAllowedGroupIds());
 
         Resource saved = resourceRepository.save(r);
@@ -110,7 +99,6 @@ public class ResourceService {
                 .name(req.getName())
                 .type(req.getType())
                 .url(uri.toString())
-                .allowedRoles(req.getAllowedRoles())
                 .allowedGroupIds(req.getAllowedGroupIds())
                 .build();
 
@@ -119,15 +107,20 @@ public class ResourceService {
 
     @Transactional
     public void delete(UUID id, String userEmail) {
-        User me = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+        resourceRepository.deleteById(id);
+    }
 
-        boolean canDelete = me.getRoles().stream()
-                .anyMatch(r -> r == Role.ADMIN || r == Role.STAFF);
-        if (!canDelete) {
-            throw new AccessDeniedException("Только STAFF и ADMIN могут удалять ресурсы");
+    /**
+     * Метод для получения доступных ресурсов с правильной обработкой пустых групп
+     */
+    private List<Resource> getAccessibleResources(List<UUID> groupIds) {
+        // Если список групп пустой или null, возвращаем только ресурсы без ограничений по группам
+        if (groupIds == null || groupIds.isEmpty()) {
+            log.debug("User has no groups, fetching resources without group restrictions");
+            return resourceRepository.findResourcesWithoutGroupRestrictions();
         }
 
-        resourceRepository.deleteById(id);
+        log.debug("Fetching resources accessible to groups: {}", groupIds);
+        return resourceRepository.findAccessibleResourcesByGroups(groupIds);
     }
 }

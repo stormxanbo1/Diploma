@@ -1,4 +1,3 @@
-// src/main/java/com/diploma/backend/dto/CommentDto.java
 package com.diploma.backend.dto;
 
 import lombok.Data;

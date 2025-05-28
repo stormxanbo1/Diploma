@@ -23,7 +23,7 @@ public class ScheduleEntryDto {
     private LessonType lessonType;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private boolean isActive;
+    private boolean active;           // ← renamed from isActive to active
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-} 
+}

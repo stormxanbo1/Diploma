@@ -59,7 +59,7 @@ public class SecurityConfig {
                 // URL-based authorization
                 .authorizeHttpRequests(auth -> auth
                         // User management – ADMIN only
-                        .requestMatchers("/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")
 
                         // Attachments – upload/download/delete
                         .requestMatchers(HttpMethod.POST,   "/api/attachments/**").authenticated()
@@ -90,9 +90,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/reports/pending").hasRole("ADMIN")
                         
                         // Schedule - based on tests
-                        .requestMatchers(HttpMethod.POST, "/api/schedule").hasAnyRole("ADMIN", "TEACHER")
-                        .requestMatchers(HttpMethod.PUT, "/api/schedule/**").hasAnyRole("ADMIN", "TEACHER")
-                        .requestMatchers(HttpMethod.DELETE, "/api/schedule/**").hasAnyRole("ADMIN", "TEACHER")
+                        .requestMatchers(HttpMethod.POST, "/api/schedule").hasAnyRole("STAFF", "ADMIN", "TEACHER")
+                        .requestMatchers(HttpMethod.PUT, "/api/schedule/**").hasAnyRole("STAFF","ADMIN", "TEACHER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/schedule/**").hasAnyRole("STAFF","ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.GET, "/api/schedule/**").authenticated()
                         
                         // Statistics - based on tests

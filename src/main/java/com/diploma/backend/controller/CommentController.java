@@ -22,8 +22,6 @@ public class CommentController {
 
     private final CommentService commentService;
 
-    /* -------- Tasks -------- */
-
     @PostMapping("/tasks/{taskId}/comments")
     public ResponseEntity<CommentDto> addToTask(
             @PathVariable UUID taskId,
@@ -40,8 +38,6 @@ public class CommentController {
         return commentService.listTask(taskId);
     }
 
-    /* -------- Projects -------- */
-
     @PostMapping("/projects/{projectId}/comments")
     public ResponseEntity<CommentDto> addToProject(
             @PathVariable UUID projectId,
@@ -57,8 +53,6 @@ public class CommentController {
     public List<CommentDto> listProject(@PathVariable UUID projectId) {
         return commentService.listProject(projectId);
     }
-
-    /* -------- Delete -------- */
 
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<Void> delete(

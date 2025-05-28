@@ -1,5 +1,6 @@
 package com.diploma.backend.entity;
 
+import com.diploma.backend.entity.LessonType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -46,14 +47,15 @@ public class ScheduleEntry {
     @Column(nullable = false)
     private LessonType lessonType;
 
-    @Column(nullable = false)
-    private boolean isActive = true;
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private boolean active = true;
 
     @CreationTimestamp
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column
     private LocalDateTime updatedAt;
-} 
+}
