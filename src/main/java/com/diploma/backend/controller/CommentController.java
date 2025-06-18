@@ -27,7 +27,6 @@ public class CommentController {
             @PathVariable UUID taskId,
             @Valid @RequestBody CreateCommentRequest req,
             Authentication auth) {
-        System.out.println("AUTH GET NAME!!!!!!!!!!!!!!!!!!!!!!!  "+auth.getName());
         CommentDto dto = commentService.addToTask(taskId, req, auth.getName());
         return ResponseEntity
                 .created(URI.create("/api/tasks/" + taskId + "/comments/" + dto.getId()))
@@ -55,8 +54,19 @@ public class CommentController {
         return commentService.listProject(projectId);
     }
 
+    /** Удаление комментария по его ID без контекста */
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<Void> delete(
+            @PathVariable UUID id,
+            Authentication auth) {
+        commentService.delete(id, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Удаление комментария по ID в контексте задачи */
+    @DeleteMapping("/tasks/{taskId}/comments/{id}")
+    public ResponseEntity<Void> deleteFromTask(
+            @PathVariable UUID taskId,
             @PathVariable UUID id,
             Authentication auth) {
         commentService.delete(id, auth.getName());

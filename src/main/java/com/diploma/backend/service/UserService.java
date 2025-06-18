@@ -1,4 +1,3 @@
-// src/main/java/com/diploma/backend/service/UserService.java
 package com.diploma.backend.service;
 
 import com.diploma.backend.dto.*;
@@ -24,7 +23,6 @@ public class UserService {
     private final PasswordEncoder encoder;
 
 
-    /* ---------- CRUD ---------- */
 
     public UserDto create(CreateUserRequest req) {
         User u = User.builder()
@@ -69,7 +67,6 @@ public class UserService {
         userRepo.deleteById(id);
     }
 
-    /* ---------- роли ---------- */
 
     public UserDto updateRoles(UUID id, RoleUpdateRequest req) {
         User u = userRepo.findById(id)
@@ -78,7 +75,6 @@ public class UserService {
         return toDto(userRepo.save(u));
     }
 
-    /* ---------- helpers ---------- */
 
     private UserDto toDto(User u) {
         UserDto dto = new UserDto();

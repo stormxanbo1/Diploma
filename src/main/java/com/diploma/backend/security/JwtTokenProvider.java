@@ -41,7 +41,6 @@ public class JwtTokenProvider {
     @Value("${jwt.refresh-expiration-hours:24}")
     private long refreshExpirationHours;
 
-    // Хранилище отозванных токенов (в реальном приложении лучше использовать Redis)
     private final ConcurrentMap<String, Date> blacklistedTokens = new ConcurrentHashMap<>();
 
     @PostConstruct
@@ -68,12 +67,10 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** Генерация access-токена */
     public String generateAccessToken(UUID userId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + accessExpirationMinutes * 60_000);
         
-        // Получаем роли пользователя из БД
         List<String> roles = getUserRoles(userId);
         
         return Jwts.builder()
@@ -85,7 +82,6 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    /** Генерация refresh-токена */
     public String generateRefreshToken(UUID userId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + refreshExpirationHours * 3_600_000);
@@ -97,7 +93,6 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    /** Получение ролей пользователя из БД */
     private List<String> getUserRoles(UUID userId) {
         return userRepository.findById(userId)
                 .map(user -> user.getRoles().stream()
@@ -106,7 +101,6 @@ public class JwtTokenProvider {
                 .orElse(Collections.emptyList());
     }
 
-    /** Валидация любого токена */
     public boolean validateToken(String token) {
         try {
             if (isTokenBlacklisted(token)) {
@@ -122,7 +116,6 @@ public class JwtTokenProvider {
         }
     }
 
-    /** Извлечение userId из токена */
     public UUID getUserIdFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -132,7 +125,6 @@ public class JwtTokenProvider {
         return UUID.fromString(claims.getSubject());
     }
     
-    /** Извлечение ролей из токена */
     @SuppressWarnings("unchecked")
     public List<String> getRolesFromToken(String token) {
         Claims claims = Jwts.parser()
@@ -144,28 +136,11 @@ public class JwtTokenProvider {
         return claims.get("roles", List.class);
     }
 
-    /** Добавление токена в черный список при выходе пользователя */
-    public void revokeToken(String token) {
-        try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-            Date expiration = claims.getExpiration();
-            blacklistedTokens.put(token, expiration);
-            log.info("Token has been blacklisted until {}", expiration);
-        } catch (JwtException ex) {
-            log.warn("Failed to blacklist invalid token", ex);
-        }
-    }
 
-    /** Проверка, находится ли токен в черном списке */
     private boolean isTokenBlacklisted(String token) {
         Date expiration = blacklistedTokens.get(token);
         if (expiration != null) {
             if (expiration.before(new Date())) {
-                // Удаляем просроченные токены из черного списка
                 blacklistedTokens.remove(token);
                 return false;
             }
@@ -174,7 +149,6 @@ public class JwtTokenProvider {
         return false;
     }
 
-    /** Очистка просроченных токенов из черного списка */
     @PostConstruct
     public void startCleanupTask() {
         Thread cleanupThread = new Thread(() -> {

@@ -1,4 +1,3 @@
-// src/main/java/com/diploma/backend/controller/AttachmentController.java
 package com.diploma.backend.controller;
 
 import com.diploma.backend.dto.AttachmentDto;
@@ -15,71 +14,59 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/attachments")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class AttachmentController {
 
     private final AttachmentService attachmentService;
 
-    @PostMapping
-    public ResponseEntity<AttachmentDto> upload(@RequestParam("file") MultipartFile file) throws Exception {
+    @PostMapping("/attachments")
+    public ResponseEntity<AttachmentDto> upload(
+            @RequestParam("file") MultipartFile file) throws Exception {
         Attachment att = attachmentService.store(file);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(att.getId())
                 .toUri();
-
-        String downloadUrl = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}/download")
-                .buildAndExpand(att.getId())
-                .toUriString();
-
-        AttachmentDto dto = AttachmentDto.builder()
-                .id(att.getId())
-                .fileName(att.getFileName())
-                .contentType(att.getContentType())
-                .size(att.getSize())
-                .url(downloadUrl)
-                .uploadedAt(att.getUploadedAt())
-                .build();
-
-        return ResponseEntity.created(location).body(dto);
+        return ResponseEntity.created(location).body(toDto(att));
     }
 
-    /**
-     * Метаданные вложения, включая URL для скачивания.
-     */
-    @GetMapping("/{id}")
+    @GetMapping("/attachments")
+    public List<AttachmentDto> listAll() {
+        return attachmentService.getAll().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/tasks/{taskId}/attachments")
+    public List<AttachmentDto> listByTask(@PathVariable UUID taskId) {
+        return attachmentService.listByTask(taskId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/projects/{projectId}/attachments")
+    public List<AttachmentDto> listByProject(@PathVariable UUID projectId) {
+        return attachmentService.listByProject(projectId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/attachments/{id}")
     public ResponseEntity<AttachmentDto> getMetadata(@PathVariable UUID id) {
         Attachment att = attachmentService.getMetadata(id);
-        String downloadUrl = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/download")
-                .buildAndExpand()
-                .toUriString();
-
-        AttachmentDto dto = AttachmentDto.builder()
-                .id(att.getId())
-                .fileName(att.getFileName())
-                .contentType(att.getContentType())
-                .size(att.getSize())
-                .url(downloadUrl)
-                .uploadedAt(att.getUploadedAt())
-                .build();
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(toDto(att));
     }
 
-    /**
-     * Принудительное скачивание вложения.
-     */
-    @GetMapping("/{id}/download")
+    @GetMapping("/attachments/{id}/download")
     public ResponseEntity<InputStreamResource> download(@PathVariable UUID id) throws Exception {
         Attachment att = attachmentService.getMetadata(id);
         InputStream is = attachmentService.getObjectStream(id);
-
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(att.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -87,9 +74,37 @@ public class AttachmentController {
                 .body(new InputStreamResource(is));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/attachments/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) throws Exception {
         attachmentService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/tasks/{taskId}/attachments/{id}")
+    public ResponseEntity<Void> deleteFromTask(@PathVariable UUID taskId, @PathVariable UUID id) throws Exception {
+        attachmentService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/projects/{projectId}/attachments/{id}")
+    public ResponseEntity<Void> deleteFromProject(@PathVariable UUID projectId, @PathVariable UUID id) throws Exception {
+        attachmentService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private AttachmentDto toDto(Attachment att) {
+        String downloadUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/api/attachments/")
+                .path(att.getId().toString())
+                .path("/download")
+                .toUriString();
+        return AttachmentDto.builder()
+                .id(att.getId())
+                .fileName(att.getFileName())
+                .contentType(att.getContentType())
+                .size(att.getSize())
+                .url(downloadUrl)
+                .uploadedAt(att.getUploadedAt())
+                .build();
     }
 }

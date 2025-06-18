@@ -1,9 +1,12 @@
-// src/main/java/com/diploma/backend/service/AttachmentService.java
 package com.diploma.backend.service;
 
 import com.diploma.backend.entity.Attachment;
+import com.diploma.backend.entity.Task;
+import com.diploma.backend.entity.Project;
 import com.diploma.backend.exception.NotFoundException;
 import com.diploma.backend.repository.AttachmentRepository;
+import com.diploma.backend.repository.TaskRepository;
+import com.diploma.backend.repository.ProjectRepository;
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -15,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -22,28 +26,28 @@ import java.util.UUID;
 public class AttachmentService {
     private final MinioClient minioClient;
     private final AttachmentRepository attachmentRepo;
+    private final TaskRepository taskRepo;
+    private final ProjectRepository projectRepo;
 
     @Value("${minio.bucket}")
     private String bucket;
 
-    /**
-     * Сохраняет файл в MinIO и метаданные в БД.
-     */
     public Attachment store(MultipartFile file) throws Exception {
         String objectName = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        // Загружаем в MinIO
+        String contentType = file.getContentType() != null
+                ? file.getContentType()
+                : "application/octet-stream";
         minioClient.putObject(
                 PutObjectArgs.builder()
                         .bucket(bucket)
                         .object(objectName)
                         .stream(file.getInputStream(), file.getSize(), -1)
-                        .contentType(file.getContentType())
+                        .contentType(contentType)
                         .build()
         );
-        // Сохраняем метаданные
         Attachment att = Attachment.builder()
                 .fileName(file.getOriginalFilename())
-                .contentType(file.getContentType())
+                .contentType(contentType)
                 .size(file.getSize())
                 .bucket(bucket)
                 .objectName(objectName)
@@ -52,9 +56,26 @@ public class AttachmentService {
         return attachmentRepo.save(att);
     }
 
-    /**
-     * Возвращает InputStream файла из MinIO.
-     */
+    public Attachment storeToTask(UUID taskId, MultipartFile file) throws Exception {
+        Task task = taskRepo.findById(taskId)
+                .orElseThrow(() -> new NotFoundException("Task not found"));
+        Attachment att = store(file);
+        att.setTask(task);
+        return attachmentRepo.save(att);
+    }
+
+    public Attachment storeToProject(UUID projectId, MultipartFile file) throws Exception {
+        Project project = projectRepo.findById(projectId)
+                .orElseThrow(() -> new NotFoundException("Project not found"));
+        Attachment att = store(file);
+        att.setProject(project);
+        return attachmentRepo.save(att);
+    }
+
+    public List<Attachment> getAll() {
+        return attachmentRepo.findAll();
+    }
+
     public InputStream getObjectStream(UUID id) throws Exception {
         Attachment att = attachmentRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Attachment not found"));
@@ -66,17 +87,11 @@ public class AttachmentService {
         );
     }
 
-    /**
-     * Возвращает метаданные вложения.
-     */
     public Attachment getMetadata(UUID id) {
         return attachmentRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Attachment not found"));
     }
 
-    /**
-     * Удаляет объект из MinIO и запись из БД.
-     */
     public void delete(UUID id) throws Exception {
         Attachment att = getMetadata(id);
         minioClient.removeObject(
@@ -86,5 +101,13 @@ public class AttachmentService {
                         .build()
         );
         attachmentRepo.delete(att);
+    }
+
+    public List<Attachment> listByTask(UUID taskId) {
+        return attachmentRepo.findByTask_Id(taskId);
+    }
+
+    public List<Attachment> listByProject(UUID projectId) {
+        return attachmentRepo.findByProject_Id(projectId);
     }
 }

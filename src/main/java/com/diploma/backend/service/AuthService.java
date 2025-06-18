@@ -23,7 +23,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
 
-    /** Регистрация нового пользователя: по умолчанию STUDENT */
     public AuthResponse register(RegisterRequest req) {
         if (userRepo.existsByEmail(req.getEmail())) {
             throw new IllegalArgumentException("EMAIL_DUPLICATE");
@@ -34,7 +33,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .firstName(req.getFirstName())
                 .lastName(req.getLastName())
-                .roles(Set.of(Role.STUDENT))              // ← дефолтная роль
+                .roles(Set.of(Role.STUDENT))
                 .build();
 
         user = userRepo.save(user);
@@ -49,7 +48,6 @@ public class AuthService {
                 .build();
     }
 
-    /** Логин по email + password */
     public AuthResponse login(LoginRequest req) {
         User user = userRepo.findByEmail(req.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
@@ -68,7 +66,6 @@ public class AuthService {
                 .build();
     }
 
-    /** Обновление access-токена по refresh-токену */
     public AuthResponse refresh(String refreshToken) {
         if (!tokenProvider.validateToken(refreshToken)) {
             throw new BadCredentialsException("Invalid refresh token");

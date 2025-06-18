@@ -1,4 +1,3 @@
-
 package com.diploma.backend.service;
 
 import com.diploma.backend.dto.CreateGroupRequest;
@@ -11,16 +10,18 @@ import com.diploma.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class GroupService {
 
     private final GroupRepository groupRepo;
-    private final UserRepository userRepo;
+    private final UserRepository  userRepo;
 
     /* ---------- CRUD ---------- */
 
@@ -43,32 +44,38 @@ public class GroupService {
         return toDto(groupRepo.save(g));
     }
 
+    @Transactional(readOnly = true)
     public List<GroupDto> listMy(String userEmail) {
         boolean isStaffOrAdmin = userRepo.findByEmail(userEmail)
                 .map(u -> u.getRoles().stream()
                         .anyMatch(r -> r.name().equals("STAFF") || r.name().equals("ADMIN")))
                 .orElse(false);
 
+        Stream<Group> groupsStream;
         if (isStaffOrAdmin) {
-            return groupRepo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+            groupsStream = groupRepo.findAll().stream();
+        } else {
+            UUID myId = userRepo.findByEmail(userEmail)
+                    .orElseThrow(() -> new NotFoundException("User not found"))
+                    .getId();
+
+            Set<Group> result = new HashSet<>(groupRepo.findByCreator_Email(userEmail));
+            result.addAll(groupRepo.findByMembers_Id(myId));
+            groupsStream = result.stream();
         }
-
-        UUID myId = userRepo.findByEmail(userEmail)
-                .orElseThrow(() -> new NotFoundException("User not found"))
-                .getId();
-
-        Set<Group> result = new HashSet<>(groupRepo.findByCreator_Email(userEmail));
-        result.addAll(groupRepo.findByMembers_Id(myId));
-
-        return result.stream().map(this::toDto).collect(Collectors.toList());
+        return groupsStream
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public GroupDto getById(UUID id, String userEmail) {
         Group g = groupRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Group not found"));
         checkAccess(g, userEmail);
         return toDto(g);
     }
+
 
     public GroupDto update(UUID id, CreateGroupRequest req, String userEmail) {
         Group g = groupRepo.findById(id)
@@ -94,7 +101,7 @@ public class GroupService {
     }
 
     /* ---------- участники ---------- */
-
+    @Transactional
     public GroupDto addMembers(UUID id, Set<UUID> memberIds, String userEmail) {
         Group g = groupRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Group not found"));
@@ -114,7 +121,6 @@ public class GroupService {
             throw new NotFoundException("User is not a member of this group");
         }
         return toDto(groupRepo.save(g));
-
     }
 
     /* ---------- helpers ---------- */

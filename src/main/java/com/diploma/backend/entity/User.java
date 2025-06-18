@@ -3,6 +3,7 @@ package com.diploma.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -11,7 +12,6 @@ import java.util.UUID;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class User {
-
     @Id
     @GeneratedValue
     @EqualsAndHashCode.Include
@@ -27,11 +27,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Set<Role> roles;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "user_groups",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "group_id")
-    )
-    private Set<Group> groups;
+    // User — обратная сторона, mappedBy на members
+    @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
+    private Set<Group> groups = new HashSet<>();
 }
+

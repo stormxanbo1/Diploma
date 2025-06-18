@@ -18,11 +18,9 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
         """)
     List<Resource> findAccessibleResourcesByGroups(@Param("groupIds") List<UUID> groupIds);
 
-    // Метод для получения ресурсов без ограничений по группам
     @Query("SELECT r FROM Resource r WHERE SIZE(r.allowedGroupIds) = 0")
     List<Resource> findResourcesWithoutGroupRestrictions();
 
-    // Если нужен метод для админов (получить все ресурсы)
     @Query("SELECT r FROM Resource r")
     List<Resource> findAll();
 }

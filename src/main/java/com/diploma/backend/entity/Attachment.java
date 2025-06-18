@@ -1,4 +1,3 @@
-// src/main/java/com/diploma/backend/entity/Attachment.java
 package com.diploma.backend.entity;
 
 import jakarta.persistence.*;
@@ -34,4 +33,14 @@ public class Attachment {
 
     @Column(nullable = false)
     private LocalDateTime uploadedAt;
+
+    /** Привязка к задаче */
+    @ManyToOne
+    @JoinColumn(name = "task_id")
+    private Task task;
+
+    /** Привязка к проекту */
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    private Project project;
 }

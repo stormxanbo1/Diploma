@@ -1,10 +1,7 @@
-// src/main/java/com/diploma/backend/entity/Comment.java
 package com.diploma.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -37,6 +34,10 @@ public class Comment {
     @JoinColumn(name = "project_id")
     private Project project;
 
-    @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onPrePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

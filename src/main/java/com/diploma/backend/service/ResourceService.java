@@ -1,11 +1,11 @@
 package com.diploma.backend.service;
 
-import com.diploma.backend.exception.ResourceNotFoundException;
 import com.diploma.backend.dto.CreateResourceRequest;
 import com.diploma.backend.dto.ResourceDto;
-import com.diploma.backend.entity.Group;
 import com.diploma.backend.entity.Resource;
+import com.diploma.backend.entity.Role;
 import com.diploma.backend.entity.User;
+import com.diploma.backend.exception.ResourceNotFoundException;
 import com.diploma.backend.repository.ResourceRepository;
 import com.diploma.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,8 +26,8 @@ import java.util.stream.Collectors;
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
-    private final UserRepository userRepository;
-    private final UserService userService;
+    private final UserRepository     userRepository;
+    private final UserService        userService;
 
     @Transactional(readOnly = true)
     public List<ResourceDto> listMy(Authentication auth) {
@@ -41,15 +42,13 @@ public class ResourceService {
 
         log.debug("User group IDs: {}", myGroupIds);
 
-        // Используем новый метод для получения доступных ресурсов
         List<Resource> resources = getAccessibleResources(myGroupIds);
 
         log.debug("Found {} resources", resources.size());
 
-        // Логируем каждый ресурс для отладки
         resources.forEach(r ->
-                log.debug("Resource: id={}, name={}, allowedGroups={}",
-                        r.getId(), r.getName(), r.getAllowedGroupIds())
+                log.debug("Resource: id={}, name={}, allowedRoles={}, allowedGroups={}",
+                        r.getId(), r.getName(), r.getAllowedRoles(), r.getAllowedGroupIds())
         );
 
         return resources.stream()
@@ -65,7 +64,6 @@ public class ResourceService {
                 .map(group -> group.getId())
                 .collect(Collectors.toList());
 
-        // Используем новый метод для получения доступных ресурсов
         Resource resource = getAccessibleResources(myGroupIds)
                 .stream()
                 .filter(r -> r.getId().equals(id))
@@ -83,7 +81,8 @@ public class ResourceService {
         r.setName(req.getName());
         r.setType(req.getType());
         r.setUrl(URI.create(req.getUrl()).toString());
-        r.setAllowedGroupIds(req.getAllowedGroupIds());
+        r.setAllowedRoles(req.getAllowedRoles() != null ? req.getAllowedRoles() : Set.of());
+        r.setAllowedGroupIds(req.getAllowedGroupIds() != null ? req.getAllowedGroupIds() : Set.of());
 
         Resource saved = resourceRepository.save(r);
         return ResourceDto.fromEntity(saved);
@@ -99,7 +98,8 @@ public class ResourceService {
                 .name(req.getName())
                 .type(req.getType())
                 .url(uri.toString())
-                .allowedGroupIds(req.getAllowedGroupIds())
+                .allowedRoles(req.getAllowedRoles() != null ? req.getAllowedRoles() : Set.of())
+                .allowedGroupIds(req.getAllowedGroupIds() != null ? req.getAllowedGroupIds() : Set.of())
                 .build();
 
         return ResourceDto.fromEntity(resourceRepository.save(r));
@@ -110,11 +110,7 @@ public class ResourceService {
         resourceRepository.deleteById(id);
     }
 
-    /**
-     * Метод для получения доступных ресурсов с правильной обработкой пустых групп
-     */
     private List<Resource> getAccessibleResources(List<UUID> groupIds) {
-        // Если список групп пустой или null, возвращаем только ресурсы без ограничений по группам
         if (groupIds == null || groupIds.isEmpty()) {
             log.debug("User has no groups, fetching resources without group restrictions");
             return resourceRepository.findResourcesWithoutGroupRestrictions();
